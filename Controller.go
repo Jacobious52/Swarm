@@ -3,11 +3,11 @@ package main
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math/rand"
 	"os"
 	"os/exec"
 	"strconv"
+	"time"
 )
 
 const (
@@ -15,17 +15,19 @@ const (
 	blue   = 'B'
 )
 
-func print(board [][]byte, dst io.WriteCloser) {
+func print(board [][]byte, dst io.Writer) {
+	str := ""
 	for _, n := range board {
 		for _, m := range n {
-			fmt.Fprintf(dst, "%c ", m)
+			str += string(m) + ","
 		}
-		fmt.Fprintln(dst)
 	}
+	fmt.Fprintln(dst, str)
 }
 
-func read(src io.ReadCloser) []byte {
-	moves, _ := ioutil.ReadAll(src)
+func read(src io.Reader) string {
+	moves := ""
+	fmt.Fscanln(src, &moves)
 	return moves
 }
 
@@ -103,11 +105,9 @@ func main() {
 	// start game loop
 	gameOver := false
 	for !gameOver {
-		fmt.Println("printing board")
 		print(board, player1In)
 		print(board, player2In)
 
-		fmt.Println("reading board")
 		player1Moves := read(player1Out)
 		player2Moves := read(player2Out)
 
@@ -115,5 +115,9 @@ func main() {
 		fmt.Println("p2", string(player2Moves))
 
 		gameOver = false
+		time.Sleep(1 * time.Second)
 	}
+
+	player1.Wait()
+	player2.Wait()
 }
