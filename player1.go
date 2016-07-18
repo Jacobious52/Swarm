@@ -13,7 +13,7 @@ func main() {
 		// do stuff
 		//fmt.Println("hello", line)
 		//f, _ := os.Create("ptest.txt")
-		fmt.Fprintln(os.Stdout, "0,1,2,4,5")
+		fmt.Fprintln(os.Stdout, "3")
 	}
 
 }
