@@ -163,7 +163,7 @@ func performMoves(board [][]byte, moves string, color byte, cellChan chan []cell
 	cellChan <- cells
 }
 
-func updateBoard(board [][]byte, p1, p2 []cell) ([][]byte, int) {
+func updateBoard(board [][]byte, p1, p2 []cell) ([][]byte, int, bool) {
 	// clear board
 	for i := range board {
 		for j := range board[i] {
@@ -173,16 +173,20 @@ func updateBoard(board [][]byte, p1, p2 []cell) ([][]byte, int) {
 		}
 	}
 
+	died := false
+
 	// check for blue collisions
 	for i, c1 := range p1 {
 		for j, c2 := range p2 {
 			if c1.x == c2.x && c1.y == c2.y {
-				if rand.Intn(10) < 5 {
+				if rand.Intn(10) < 5 && i < len(p1) {
 					p1 = append(p1[:i], p1[i+1:]...)
 					i--
+					died = true
 				} else {
 					p2 = append(p2[:j], p2[j+1:]...)
 					j--
+					died = true
 				}
 			}
 		}
@@ -197,13 +201,17 @@ func updateBoard(board [][]byte, p1, p2 []cell) ([][]byte, int) {
 		board[c.x][c.y] = c.c
 	}
 
-	var delete []cell
+	// delete cells if captured
+
 	count1, count2 := len(p1), len(p2)
+
+	/*var delete []cell
 	// check for captures in p1
 	for _, c := range p1 {
 		if surrounded(board, c, blue) == true {
 			delete = append(delete, c)
 			count1--
+			died = true
 		}
 	}
 
@@ -212,12 +220,13 @@ func updateBoard(board [][]byte, p1, p2 []cell) ([][]byte, int) {
 		if surrounded(board, c, yellow) == true {
 			delete = append(delete, c)
 			count2--
+			died = true
 		}
 	}
 
 	for _, c := range delete {
 		board[c.x][c.y] = '0'
-	}
+	}*/
 
 	winner := 0
 	if float32(count1)/float32(count2) < 0.1 {
@@ -226,7 +235,7 @@ func updateBoard(board [][]byte, p1, p2 []cell) ([][]byte, int) {
 		winner = -1
 	}
 
-	return board, winner
+	return board, winner, died
 }
 
 type queue []cell
@@ -335,6 +344,7 @@ func play() {
 
 	// start game loop
 	gameOver := false
+	moves, lastDied := 0, 0
 	for !gameOver {
 
 		player1Chan := make(chan string)
@@ -360,18 +370,29 @@ func play() {
 		player1Cells := <-player1MoveChan
 		player2Cells := <-player2MoveChan
 
+		moves++
+
 		var winner int
-		board, winner = updateBoard(board, player1Cells, player2Cells)
+		var died bool
+		board, winner, died = updateBoard(board, player1Cells, player2Cells)
 
 		print(board, out)
 
 		if winner == 1 {
-			fmt.Fprintf(out, "%c", yellow)
+			fmt.Fprintf(out, "%c", blue)
 			fmt.Fprintln(os.Stderr, "player 1 wins")
 			gameOver = true
 		} else if winner == -1 {
-			fmt.Fprintf(out, "%c", blue)
+			fmt.Fprintf(out, "%c", yellow)
 			fmt.Fprintln(os.Stderr, "player 2 wins")
+			gameOver = true
+		}
+
+		if died == true {
+			lastDied = moves
+		} else if died == false && moves-lastDied > 50 {
+			fmt.Fprintf(out, "%c", 'S')
+			fmt.Fprintln(os.Stderr, "stalemate")
 			gameOver = true
 		}
 	}

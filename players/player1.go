@@ -2,18 +2,25 @@ package main
 
 import (
 	"fmt"
+	"math/rand"
 	"os"
+	"strconv"
+	"strings"
+	"time"
 )
 
 func main() {
-
+	color := os.Args[3]
+	rand.Seed(time.Now().UTC().UnixNano())
 	for {
 		line := ""
 		fmt.Scanln(&line)
-		// do stuff
-		//fmt.Println("hello", line)
-		//f, _ := os.Create("ptest.txt")
-		fmt.Fprintln(os.Stdout, "3")
+		count := strings.Count(line, color)
+		var moves string
+		for i := 0; i < count; i++ {
+			moves += strconv.Itoa(rand.Intn(7))
+		}
+		fmt.Fprintln(os.Stdout, moves)
 	}
 
 }
