@@ -7,7 +7,6 @@ import (
 	"os"
 	"os/exec"
 	"strconv"
-	"strings"
 	"time"
 )
 
@@ -20,7 +19,7 @@ func print(board [][]byte, dst io.Writer) {
 	str := ""
 	for _, n := range board {
 		for _, m := range n {
-			str += string(m) + ","
+			str += string(m)
 		}
 	}
 	fmt.Fprintln(dst, str)
@@ -81,23 +80,23 @@ type cell struct {
 	c      byte
 }
 
-func position(move string) (int, int) {
+func position(move byte) (int, int) {
 	switch move {
-	case "0":
+	case '0':
 		return 0, -1
-	case "1":
+	case '1':
 		return 1, -1
-	case "2":
+	case '2':
 		return 1, 0
-	case "3":
+	case '3':
 		return 1, 1
-	case "4":
+	case '4':
 		return 0, 1
-	case "5":
+	case '5':
 		return -1, 1
-	case "6":
+	case '6':
 		return -1, 0
-	case "7":
+	case '7':
 		return -1, -1
 	}
 	return 0, 0
@@ -121,7 +120,7 @@ func clamp(x, y, w, h int) (int, int) {
 
 func performMoves(board [][]byte, moves string, color byte, cellChan chan []cell) {
 	// sanity check for player move count compared to board count
-	moveSet := strings.Split(moves, ",")
+	moveSet := moves
 	moveIndex := 0
 	for i := range board {
 		for j := range board[i] {
@@ -164,7 +163,7 @@ func performMoves(board [][]byte, moves string, color byte, cellChan chan []cell
 	cellChan <- cells
 }
 
-func updateBoard(board [][]byte, p1, p2 []cell) [][]byte {
+func updateBoard(board [][]byte, p1, p2 []cell) ([][]byte, int) {
 	// clear board
 	for i := range board {
 		for j := range board[i] {
@@ -178,13 +177,10 @@ func updateBoard(board [][]byte, p1, p2 []cell) [][]byte {
 	for i, c1 := range p1 {
 		for j, c2 := range p2 {
 			if c1.x == c2.x && c1.y == c2.y {
-				fmt.Fprintln(os.Stderr, "collision")
 				if rand.Intn(10) < 5 {
-					fmt.Fprintln(os.Stderr, "y dies")
 					p1 = append(p1[:i], p1[i+1:]...)
 					i--
 				} else {
-					fmt.Fprintln(os.Stderr, "b dies")
 					p2 = append(p2[:j], p2[j+1:]...)
 					j--
 				}
@@ -201,12 +197,97 @@ func updateBoard(board [][]byte, p1, p2 []cell) [][]byte {
 		board[c.x][c.y] = c.c
 	}
 
-	// check for captures
+	var delete []cell
+	count1, count2 := len(p1), len(p2)
+	// check for captures in p1
+	for _, c := range p1 {
+		if surrounded(board, c, blue) == true {
+			delete = append(delete, c)
+			count1--
+		}
+	}
 
-	return board
+	// check for p2
+	for _, c := range p2 {
+		if surrounded(board, c, yellow) == true {
+			delete = append(delete, c)
+			count2--
+		}
+	}
+
+	for _, c := range delete {
+		board[c.x][c.y] = '0'
+	}
+
+	winner := 0
+	if float32(count1)/float32(count2) < 0.1 {
+		winner = 1
+	} else if float32(count2)/float32(count1) < 0.1 {
+		winner = -1
+	}
+
+	return board, winner
 }
 
-func main() {
+type queue []cell
+
+func (q queue) push(b cell) queue {
+	return append(q, b)
+}
+
+func (q queue) pop() (queue, cell) {
+	return q[1:], q[0]
+}
+
+func (q queue) empty() bool {
+	return len(q) == 0
+}
+
+// check if position on board is surrounded by colour.
+// returns true for surrounded, false for not surrounded
+func surrounded(b [][]byte, start cell, blockingColor byte) bool {
+	var visited []cell
+	var fringe queue
+
+	fringe = fringe.push(start)
+
+	adj := [4][2]int{{0, -1}, {0, 1}, {-1, 0}, {0, 1}}
+
+	for fringe.empty() == false {
+		var current cell
+		fringe, current = fringe.pop()
+		visited = append(visited, current)
+
+		if (current.x == 0 || current.y == 0 ||
+			current.x == len(b)-1 || current.y == len(b[0])-1) &&
+			current.c != blockingColor {
+			return false
+		}
+
+		for _, p := range adj {
+			x, y := current.x+p[0], current.y+p[1]
+			if x >= 0 && y >= 0 && x < len(b) && y < len(b[0]) {
+				next := cell{x, y, x, y, b[x][y]}
+
+				in := false
+				for _, v := range visited {
+					if next.x == v.x && next.y == v.y {
+						in = true
+						break
+					}
+				}
+
+				if in != true && b[x][y] != blockingColor {
+					fringe = fringe.push(next)
+				}
+			}
+		}
+	}
+
+	return true
+}
+
+func play() {
 	if len(os.Args) != 6 {
 		fmt.Println("not enough args", len(os.Args))
 		os.Exit(1)
@@ -247,6 +328,11 @@ func main() {
 		os.Exit(1)
 	}
 
+	out, _ := os.Create("game.txt")
+	defer out.Close()
+
+	fmt.Fprintln(out, w, h)
+
 	// start game loop
 	gameOver := false
 	for !gameOver {
@@ -274,15 +360,26 @@ func main() {
 		player1Cells := <-player1MoveChan
 		player2Cells := <-player2MoveChan
 
-		board = updateBoard(board, player1Cells, player2Cells)
+		var winner int
+		board, winner = updateBoard(board, player1Cells, player2Cells)
 
-		pprint(board)
-		fmt.Println()
+		print(board, out)
 
-		gameOver = false
-		time.Sleep(250 * time.Millisecond)
+		if winner == 1 {
+			fmt.Fprintf(out, "%c", yellow)
+			fmt.Fprintln(os.Stderr, "player 1 wins")
+			gameOver = true
+		} else if winner == -1 {
+			fmt.Fprintf(out, "%c", blue)
+			fmt.Fprintln(os.Stderr, "player 2 wins")
+			gameOver = true
+		}
 	}
 
-	player1.Wait()
-	player2.Wait()
+	player1.Process.Kill()
+	player2.Process.Kill()
+}
+
+func main() {
+	play()
 }
