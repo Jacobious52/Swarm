@@ -36,13 +36,16 @@ function draw(){
   text("move: " + currentMove,20 ,60);
   if(gameRunning){
     buffer = 50;
-    //board height & width
-    var bh = height-2*buffer
-    var bw = width-2*buffer
-    if(rows > columns){
-      var size = bh/rows;
+
+    if(height > width){
+      var maxSize = width-2*buffer;
     } else {
-      var size = bw/columns;
+      var maxSize = height-2*buffer;
+    }
+    if(columns > rows){
+      size = maxSize/columns;
+    } else {
+      size = maxSize/rows;
     }
     push();
     translate(width/2-(size*columns)/2, height/2-(size*rows)/2);
