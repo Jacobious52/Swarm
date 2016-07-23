@@ -9,6 +9,7 @@ var currentMove;
 var moveCount;
 var winner;
 var gameRunning;
+var start = 0;
 
 function setup(){
   if(game[game.length-1] == "B"){
@@ -16,19 +17,16 @@ function setup(){
   } else if (game[game.length-1] == "Y"){
     winner = "Yellow"
   } else {
-    winner = "You all lose!"
+    winner = "Nobody! You all Suck!"
   }
   gameRunning = true;
   currentMove = 1;
-  moveCount = (game.length)-1;
+  moveCount = (game.length)-2;
   dim = split(game[0], " ");
   columns = int(dim[0]);
   rows = int(dim[1]);
   createCanvas(window.innerWidth, window.innerHeight);
 }
-
-var cTime;
-var pTime;
 
 function draw(){
   background(50);
@@ -63,7 +61,7 @@ function draw(){
           case "X":
             fill(100);
         }
-        stroke(250);
+        stroke(100);
         rect(i*size,j*size,size,size);
       }
     }
@@ -78,14 +76,13 @@ function draw(){
     text(winner,0 ,60);
     pop();
   }
-  cTime = second();
-  if(currentMove > moveCount-1){
-    gameRunning = false;
-  } else {
-    //if a second has passed
-    if(pTime != cTime){
+  //timer, ticks every 250 mil and only starts after a second
+  if(millis()-start > 200 && millis() > 1000){
+    if(currentMove > moveCount-1){
+      gameRunning = false;
+    } else {
       currentMove++;
+      start = millis();
     }
-    pTime = cTime;
   }
 }
