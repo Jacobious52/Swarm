@@ -205,7 +205,7 @@ func updateBoard(board [][]byte, p1, p2 []cell) ([][]byte, int, bool) {
 
 	count1, count2 := len(p1), len(p2)
 
-	/*var delete []cell
+	var delete []cell
 	// check for captures in p1
 	for _, c := range p1 {
 		if surrounded(board, c, blue) == true {
@@ -226,7 +226,7 @@ func updateBoard(board [][]byte, p1, p2 []cell) ([][]byte, int, bool) {
 
 	for _, c := range delete {
 		board[c.x][c.y] = '0'
-	}*/
+	}
 
 	winner := 0
 	if float32(count1)/float32(count2) < 0.1 {
@@ -238,17 +238,17 @@ func updateBoard(board [][]byte, p1, p2 []cell) ([][]byte, int, bool) {
 	return board, winner, died
 }
 
-type queue []cell
+type stack []cell
 
-func (q queue) push(b cell) queue {
+func (q stack) push(b cell) stack {
 	return append(q, b)
 }
 
-func (q queue) pop() (queue, cell) {
-	return q[1:], q[0]
+func (q stack) pop() (stack, cell) {
+	return q[:len(q)-1], q[len(q)-1]
 }
 
-func (q queue) empty() bool {
+func (q stack) empty() bool {
 	return len(q) == 0
 }
 
@@ -256,7 +256,7 @@ func (q queue) empty() bool {
 // returns true for surrounded, false for not surrounded
 func surrounded(b [][]byte, start cell, blockingColor byte) bool {
 	var visited []cell
-	var fringe queue
+	var fringe stack
 
 	fringe = fringe.push(start)
 
