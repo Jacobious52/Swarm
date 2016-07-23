@@ -163,6 +163,11 @@ func performMoves(board [][]byte, moves string, color byte, cellChan chan []cell
 	cellChan <- cells
 }
 
+type cellpair struct {
+	c *cell
+	d bool
+}
+
 func updateBoard(board [][]byte, p1, p2 []cell) ([][]byte, int, bool) {
 	// clear board
 	for i := range board {
@@ -205,27 +210,23 @@ func updateBoard(board [][]byte, p1, p2 []cell) ([][]byte, int, bool) {
 
 	count1, count2 := len(p1), len(p2)
 
-	var delete []cell
+	deleteChan := make(chan cellpair, count1+count2)
+
 	// check for captures in p1
 	for _, c := range p1 {
-		if surrounded(board, c, blue) == true {
-			delete = append(delete, c)
-			count1--
-			died = true
-		}
+		go surrounded(board, c, blue, deleteChan)
 	}
 
 	// check for p2
 	for _, c := range p2 {
-		if surrounded(board, c, yellow) == true {
-			delete = append(delete, c)
-			count2--
-			died = true
-		}
+		go surrounded(board, c, yellow, deleteChan)
 	}
 
-	for _, c := range delete {
-		board[c.x][c.y] = '0'
+	for i := 0; i < count1+count2; i++ {
+		cp := <-deleteChan
+		if cp.d == true {
+			board[cp.c.x][cp.c.y] = '0'
+		}
 	}
 
 	winner := 0
@@ -254,7 +255,7 @@ func (q stack) empty() bool {
 
 // check if position on board is surrounded by colour.
 // returns true for surrounded, false for not surrounded
-func surrounded(b [][]byte, start cell, blockingColor byte) bool {
+func surrounded(b [][]byte, start cell, blockingColor byte, deleteChan chan cellpair) {
 	var visited []cell
 	var fringe stack
 
@@ -270,7 +271,10 @@ func surrounded(b [][]byte, start cell, blockingColor byte) bool {
 		if (current.x == 0 || current.y == 0 ||
 			current.x == len(b)-1 || current.y == len(b[0])-1) &&
 			current.c != blockingColor {
-			return false
+
+			deleteChan <- cellpair{&current, false}
+
+			return
 		}
 
 		for _, p := range adj {
@@ -293,7 +297,8 @@ func surrounded(b [][]byte, start cell, blockingColor byte) bool {
 		}
 	}
 
-	return true
+	deleteChan <- cellpair{nil, false}
+	return
 }
 
 func play() {
