@@ -163,11 +163,6 @@ func performMoves(board [][]byte, moves string, color byte, cellChan chan []cell
 	cellChan <- cells
 }
 
-type cellpair struct {
-	c *cell
-	d bool
-}
-
 func updateBoard(board [][]byte, p1, p2 []cell) ([][]byte, int, bool) {
 	// clear board
 	for i := range board {
@@ -210,29 +205,27 @@ func updateBoard(board [][]byte, p1, p2 []cell) ([][]byte, int, bool) {
 
 	count1, count2 := len(p1), len(p2)
 
-	deleteChan := make(chan cellpair, count1+count2)
-
+	var delete []cell
 	// check for captures in p1
 	for _, c := range p1 {
-		go surrounded(board, c, blue, deleteChan)
+		if surrounded(board, c, blue) == true {
+			delete = append(delete, c)
+			count1--
+			died = true
+		}
 	}
 
 	// check for p2
 	for _, c := range p2 {
-		go surrounded(board, c, yellow, deleteChan)
+		if surrounded(board, c, yellow) == true {
+			delete = append(delete, c)
+			count2--
+			died = true
+		}
 	}
 
-	for i := 0; i < count1+count2; i++ {
-		cp := <-deleteChan
-		if cp.d == true {
-			board[cp.c.x][cp.c.y] = '0'
-			if cp.c.c == blue {
-				count1--
-			} else if cp.c.c == yellow {
-				count2--
-			}
-		}
-		died = true
+	for _, c := range delete {
+		board[c.x][c.y] = '0'
 	}
 
 	winner := 0
@@ -261,7 +254,7 @@ func (q stack) empty() bool {
 
 // check if position on board is surrounded by colour.
 // returns true for surrounded, false for not surrounded
-func surrounded(b [][]byte, start cell, blockingColor byte, deleteChan chan cellpair) {
+func surrounded(b [][]byte, start cell, blockingColor byte) bool {
 	var visited []cell
 	var fringe stack
 
@@ -277,10 +270,7 @@ func surrounded(b [][]byte, start cell, blockingColor byte, deleteChan chan cell
 		if (current.x == 0 || current.y == 0 ||
 			current.x == len(b)-1 || current.y == len(b[0])-1) &&
 			current.c != blockingColor {
-
-			deleteChan <- cellpair{nil, false}
-
-			return
+			return false
 		}
 
 		for _, p := range adj {
@@ -303,8 +293,7 @@ func surrounded(b [][]byte, start cell, blockingColor byte, deleteChan chan cell
 		}
 	}
 
-	deleteChan <- cellpair{&start, true}
-	return
+	return true
 }
 
 func play() {
