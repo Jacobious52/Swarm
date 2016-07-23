@@ -229,9 +229,9 @@ func updateBoard(board [][]byte, p1, p2 []cell) ([][]byte, int, bool) {
 	}
 
 	winner := 0
-	if float32(count1)/float32(count2) < 0.1 {
+	if float32(count1)/float32(count2) < 0.15 {
 		winner = 1
-	} else if float32(count2)/float32(count1) < 0.1 {
+	} else if float32(count2)/float32(count1) < 0.15 {
 		winner = -1
 	}
 
