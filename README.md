@@ -1,8 +1,10 @@
 # Swarm
-AI swarm bot game
+AI swarm bot game (program your swarm bot to engulf the opponents)
 
-Controller - Go
+Quick and hacky code just a quick idea and practising Go purposes. Not anything proper at all!
 
-Viewer     - js/p5
+Controller - Go - Jacob Gonzalez
+
+Viewer     - js/p5 - Trek Hopton
 
 Model/Bot  - Any lang through stdin/stdout
